@@ -22,7 +22,9 @@ import io.github.jhipster.config.JHipsterConstants;
 import io.github.jhipster.web.util.HeaderUtil;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 <%_ if (databaseType !== 'no' && databaseType !== 'cassandra') { _%>
 import org.springframework.dao.ConcurrencyFailureException;
 <%_ } _%>
@@ -48,6 +50,8 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.context.request.NativeWebRequest;
 <%_ } _%>
 import org.springframework.core.env.Environment;
+import org.springframework.web.servlet.LocaleResolver;
+import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver;
 import org.zalando.problem.DefaultProblem;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ProblemBuilder;
@@ -69,6 +73,7 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -93,10 +98,18 @@ if (reactive) {
     requestClass = 'NativeWebRequest';
 }
 _%>
-    private static final String FIELD_ERRORS_KEY = "fieldErrors";
-    private static final String MESSAGE_KEY = "message";
-    private static final String PATH_KEY = "path";
-    private static final String VIOLATIONS_KEY = "violations";
+    private static final String KEY_CODE = "code";
+    private static final String KEY_MESSAGE = "message";
+    private static final String KEY_PATH = "path";
+    private static final String KEY_VIOLATIONS = "violations";
+    private static final String KEY_FIELD_ERRORS = "fieldErrors";
+    private static final String KEY_ARGS = "args";
+
+    @Autowired
+    private MessageSource messageSource;
+
+    @Autowired
+    private LocaleResolver localeResolver;
 
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
@@ -111,7 +124,7 @@ _%>
      * Post-process the Problem payload to add the message key for the front-end if needed.
      */
     @Override
-    public <%- returnType %> process(@Nullable ResponseEntity<Problem> entity, <%= requestClass %> request) {
+    public <%- returnType %> process(@Nullable ResponseEntity<Problem> entity, <%= requestClass %> nativeWebRequest) {
         if (entity == null) {
             <%_ if (!reactive) { _%>
             return entity;
@@ -127,142 +140,112 @@ _%>
             return Mono.just(entity);
             <%_ } _%>
         }
+
+        Object objCode = problem.getParameters().get(KEY_CODE);
+        Object objArgs = problem.getParameters().get(KEY_ARGS);
+        String code = objCode == null ? ErrorConstants.ERR_UNKOWN : (String)objCode;
+        Object [] args = objArgs == null ? new String []{} : (Object [])objArgs;
+        HttpServletRequest request = nativeWebRequest.getNativeRequest(HttpServletRequest.class);
+        Locale locale = localeResolver.resolveLocale(request);
+        String message = messageSource.getMessage(code, args, locale);
+        // 未知类型显示Detail
+        if(ErrorConstants.ERR_UNKOWN.equals(code)) {
+            message = problem.getDetail();
+        }
+
         ProblemBuilder builder = Problem.builder()
-            .withType(Problem.DEFAULT_TYPE.equals(problem.getType()) ? ErrorConstants.DEFAULT_TYPE : problem.getType())
+            .withType(Problem.DEFAULT_TYPE.equals(problem.getType()) ? ErrorConstants.URI_DEFAULT : problem.getType())
             .withStatus(problem.getStatus())
-            .withTitle(problem.getTitle())
             <%_ if (!reactive) { _%>
-            .with(PATH_KEY, request.getNativeRequest(HttpServletRequest.class).getRequestURI());
+            .with(KEY_PATH, request.getRequestURI());
             <%_ } else { _%>
-            .with(PATH_KEY, request.getRequest().getPath().value());
+            .with(KEY_PATH, request.getRequest().getPath().value());
             <%_ } _%>
+            .with(KEY_CODE, code)
+            .with(KEY_MESSAGE, message);
 
         if (problem instanceof ConstraintViolationProblem) {
             builder
-                .with(VIOLATIONS_KEY, ((ConstraintViolationProblem) problem).getViolations())
-                .with(MESSAGE_KEY, ErrorConstants.ERR_VALIDATION);
+                .with(KEY_VIOLATIONS, ((ConstraintViolationProblem) problem).getViolations());
         } else {
-            builder
-                .withCause(((DefaultProblem) problem).getCause())
-                .withDetail(problem.getDetail())
-                .withInstance(problem.getInstance());
-            problem.getParameters().forEach(builder::with);
-            if (!problem.getParameters().containsKey(MESSAGE_KEY) && problem.getStatus() != null) {
-                builder.with(MESSAGE_KEY, "error.http." + problem.getStatus().getStatusCode());
-            }
-        }
+//          builder
+//              .withCause(((DefaultProblem) problem).getCause())
+//              .withDetail(problem.getDetail())
+//              .withInstance(problem.getInstance());
+//          problem.getParameters().forEach(builder::with);
+//          if (!problem.getParameters().containsKey(MESSAGE_KEY) && problem.getStatus() != null) {
+//              builder.with(MESSAGE_KEY, "error.http." + problem.getStatus().getStatusCode());
+//          }
+//      }
         return <% if (reactive) { %>Mono.just(<% } %>new ResponseEntity<>(builder.build(), entity.getHeaders(), entity.getStatusCode())<% if (reactive) { %>)<% } %>;
     }
 
     @Override
-    public <%- returnType %> handle<%_ if (!reactive) { _%>MethodArgumentNotValid(MethodArgumentNotValidException<% } else { %>BindingResult(WebExchangeBindException<% } %> ex, @Nonnull <%= requestClass %> request) {
+    public <%- returnType %> handle<%_ if (!reactive) { _%>MethodArgumentNotValid(MethodArgumentNotValidException<% } else { %>BindingResult(WebExchangeBindException<% } %> ex, @Nonnull <%= requestClass %> nativeWebRequest) {
         BindingResult result = ex.getBindingResult();
         List<FieldErrorVM> fieldErrors = result.getFieldErrors().stream()
             .map(f -> new FieldErrorVM(f.getObjectName().replaceFirst("<%= dtoSuffix %>$", ""), f.getField(), f.getCode()))
             .collect(Collectors.toList());
 
         Problem problem = Problem.builder()
-            .withType(ErrorConstants.CONSTRAINT_VIOLATION_TYPE)
-            .withTitle("<%_ if (!reactive) { _%>Method argument not valid<% } else { %>Data binding and validation failure<% } %>")
+            .withType(ErrorConstants.URI_CONSTRAINT_VIOLATION)
+            //.withTitle("<%_ if (!reactive) { _%>Method argument not valid<% } else { %>Data binding and validation failure<% } %>")
             .withStatus(<% if (!reactive) { %>defaultConstraintViolationStatus()<% } else { %>Status.BAD_REQUEST<% } %>)
-            .with(MESSAGE_KEY, ErrorConstants.ERR_VALIDATION)
-            .with(FIELD_ERRORS_KEY, fieldErrors)
+            .with(KEY_CODE, ErrorConstants.ERR_VALIDATION)
+            .with(KEY_FIELD_ERRORS, fieldErrors)
             .build();
-        return create(ex, problem, request);
-    }
-    <%_ if (!skipUserManagement) { _%>
-
-    @ExceptionHandler
-    public <%- returnType %> handleEmailAlreadyUsedException(<%= packageName %>.service.EmailAlreadyUsedException ex, <%= requestClass %> request) {
-        EmailAlreadyUsedException problem = new EmailAlreadyUsedException();
-        return create(problem, request, HeaderUtil.createFailureAlert(applicationName,  <%= enableTranslation %>, problem.getEntityName(), problem.getErrorKey(), problem.getMessage()));
+        return create(ex, problem, nativeWebRequest);
     }
 
     @ExceptionHandler
-    public <%- returnType %> handleUsernameAlreadyUsedException(<%= packageName %>.service.UsernameAlreadyUsedException ex, <%= requestClass %> request) {
-        LoginAlreadyUsedException problem = new LoginAlreadyUsedException();
-        return create(problem, request, HeaderUtil.createFailureAlert(applicationName,  <%= enableTranslation %>, problem.getEntityName(), problem.getErrorKey(), problem.getMessage()));
+    public <%- returnType %> handleBadRequestAlertException(BadRequestAlertException ex, <%= requestClass %> nativeWebRequest) {
+        //return create(ex, request, HeaderUtil.createFailureAlert(applicationName, <%= enableTranslation %>, ex.getEntityName(), ex.getErrorKey(), ex.getMessage()));
+        Problem problem = Problem.builder()
+            .withStatus(Status.BAD_REQUEST)
+            .withType(ErrorConstants.URI_DEFAULT)
+            .with(KEY_CODE, ex.getErrorKey())
+            .build();
+        return create(ex, problem, nativeWebRequest);
     }
 
-    @ExceptionHandler
-    public <%- returnType %> handleInvalidPasswordException(<%= packageName %>.service.InvalidPasswordException ex, <%= requestClass %> request) {
-        return create(new InvalidPasswordException(), request);
-    }
-    <%_ } _%>
-
-    @ExceptionHandler
-    public <%- returnType %> handleBadRequestAlertException(BadRequestAlertException ex, <%= requestClass %> request) {
-        return create(ex, request, HeaderUtil.createFailureAlert(applicationName, <%= enableTranslation %>, ex.getEntityName(), ex.getErrorKey(), ex.getMessage()));
-    }
     <%_ if (databaseType !== 'no' && databaseType !== 'cassandra') { _%>
 
     @ExceptionHandler
-    public <%- returnType %> handleConcurrencyFailure(ConcurrencyFailureException ex, <%= requestClass %> request) {
+    public <%- returnType %> handleConcurrencyFailure(ConcurrencyFailureException ex, <%= requestClass %> nativeWebRequest) {
         Problem problem = Problem.builder()
             .withStatus(Status.CONFLICT)
-            .with(MESSAGE_KEY, ErrorConstants.ERR_CONCURRENCY_FAILURE)
+            .withType(ErrorConstants.URI_DEFAULT)
+            .with(KEY_CODE, ErrorConstants.ERR_CONCURRENCY_FAILURE)
             .build();
-        return create(ex, problem, request);
+        return create(ex, problem, nativeWebRequest);
     }
+
+    /**
+     * 业务异常处理
+     */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Problem> handleBizErrorAlertException(BusinessException ex, NativeWebRequest nativeWebRequest) {
+        Problem problem = Problem.builder()
+            .withStatus(Status.BAD_REQUEST)
+            .withType(ErrorConstants.URI_DEFAULT)
+            .with(KEY_CODE, ex.getCode())
+            .with(KEY_ARGS, ex.getArgs())
+            .build();
+        return create(ex, problem, nativeWebRequest);
+    }
+
     <%_ } _%>
 
-    @Override
-    public ProblemBuilder prepare(final Throwable throwable, final StatusType status, final URI type) {
-
-        Collection<String> activeProfiles = Arrays.asList(env.getActiveProfiles());
-
-        if (activeProfiles.contains(JHipsterConstants.SPRING_PROFILE_PRODUCTION)) {
-            if (throwable instanceof HttpMessageConversionException) {
-                return Problem.builder()
-                    .withType(type)
-                    .withTitle(status.getReasonPhrase())
-                    .withStatus(status)
-                    .withDetail("Unable to convert http message")
-                    .withCause(Optional.ofNullable(throwable.getCause())
-                        .filter(cause -> isCausalChainsEnabled())
-                        .map(this::toProblem)
-                        .orElse(null));
-            }
-            <%_ if (databaseType !== 'no') { _%>
-            if (throwable instanceof DataAccessException) {
-                return Problem.builder()
-                    .withType(type)
-                    .withTitle(status.getReasonPhrase())
-                    .withStatus(status)
-                    .withDetail("Failure during data access")
-                    .withCause(Optional.ofNullable(throwable.getCause())
-                        .filter(cause -> isCausalChainsEnabled())
-                        .map(this::toProblem)
-                        .orElse(null));
-            }
-            <%_ } _%>
-            if (containsPackageName(throwable.getMessage())) {
-                return Problem.builder()
-                    .withType(type)
-                    .withTitle(status.getReasonPhrase())
-                    .withStatus(status)
-                    .withDetail("Unexpected runtime exception")
-                    .withCause(Optional.ofNullable(throwable.getCause())
-                        .filter(cause -> isCausalChainsEnabled())
-                        .map(this::toProblem)
-                        .orElse(null));
-            }
-        }
-
-        return Problem.builder()
-            .withType(type)
-            .withTitle(status.getReasonPhrase())
-            .withStatus(status)
-            .withDetail(throwable.getMessage())
-            .withCause(Optional.ofNullable(throwable.getCause())
-                .filter(cause -> isCausalChainsEnabled())
-                .map(this::toProblem)
-                .orElse(null));
-    }
-
-    private boolean containsPackageName(String message) {
-
-        // This list is for sure not complete
-        return StringUtils.containsAny(message, "org.", "java.", "net.", "javax.", "com.", "io.", "de.", "<%= packageName %>");
-    }
+//    @Override
+//    public ProblemBuilder prepare(final Throwable throwable, final StatusType status, final URI type) {
+//        return Problem.builder()
+//            .withType(type)
+//            .withTitle(status.getReasonPhrase())
+//            .withStatus(status)
+//            .withDetail(throwable.getMessage())
+//            .withCause(Optional.ofNullable(throwable.getCause())
+//                .filter(cause -> isCausalChainsEnabled())
+//                .map(this::toProblem)
+//      .orElse(null));
+//    }
 }

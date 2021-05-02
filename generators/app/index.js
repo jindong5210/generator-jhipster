@@ -287,7 +287,7 @@ module.exports = class extends BaseBlueprintGenerator {
 
             checkForNewJHVersion() {
                 if (!this.skipChecks) {
-                    this.checkForNewVersion();
+                    //this.checkForNewVersion();
                 }
             },
 

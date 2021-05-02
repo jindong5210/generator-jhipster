@@ -17,6 +17,9 @@
  limitations under the License.
 -%>
 package <%= packageName %>.config;
+
+/**
+
 <%_ if (databaseType === 'mongodb') { _%>
 
 import com.github.mongobee.Mongobee;
@@ -64,7 +67,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.util.ArrayList;
 import java.util.List;
 <%_ } _%>
+*/
 
+/**
+ * 支持Spring Cloud Connectors，简化了在像Cloud Foundry或Heroku这样的云平台上连接服务。
+ * 暂时不需要
+ * @author kyo
+ */
+
+/**
 
 @Configuration
 <%_ if (databaseType === 'mongodb') { _%>
@@ -133,3 +144,5 @@ public class CloudDatabaseConfiguration extends AbstractCloudConfig {
     }
     <%_ } _%>
 }
+
+*/

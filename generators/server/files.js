@@ -1231,6 +1231,10 @@ const serverFiles = {
                     renameTo: generator => `${generator.javaDir}web/rest/errors/BadRequestAlertException.java`,
                 },
                 {
+                    file: 'package/web/rest/errors/BusinessException.java',
+                    renameTo: generator => `${generator.javaDir}web/rest/errors/BusinessException.java`,
+                },
+                {
                     file: 'package/web/rest/errors/ErrorConstants.java',
                     renameTo: generator => `${generator.javaDir}web/rest/errors/ErrorConstants.java`,
                 },

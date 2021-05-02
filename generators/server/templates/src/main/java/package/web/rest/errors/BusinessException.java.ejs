@@ -1,0 +1,29 @@
+package <%= packageName %>.web.rest.errors;
+
+import org.zalando.problem.AbstractThrowableProblem;
+
+/**
+ * 自定义业务异常
+ */
+public class BusinessException extends AbstractThrowableProblem{
+
+	private static final long serialVersionUID = -8325149546268325931L;
+
+	private final String code;
+
+	private final Object [] args;
+
+	public BusinessException(String code, Object ... args){
+		this.code = code;
+		this.args = args;
+	}
+
+	public String getCode() {
+		return code;
+	}
+
+	public Object[] getArgs() {
+		return args;
+	}
+
+}

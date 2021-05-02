@@ -30,6 +30,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.security.authentication.BadCredentialsException;
+
+import com.zeiet.std.gateway.web.rest.errors.BadRequestAlertException;
+import com.zeiet.std.gateway.web.rest.errors.BusinessException;
 
 import java.util.Arrays;
 
@@ -85,6 +89,19 @@ public class LoggingAspect {
      */
     @AfterThrowing(pointcut = "applicationPackagePointcut() && springBeanPointcut()", throwing = "e")
     public void logAfterThrowing(JoinPoint joinPoint, Throwable e) {
+
+        Class<?> [] businessExpClazz = {
+            BadRequestAlertException.class,  //400参数异常
+            BusinessException.class,         //业务异常
+            BadCredentialsException.class    //用户登录密码错误
+        };
+        for(Class<?> clazz : businessExpClazz) {
+            if(clazz.isInstance(e)) {
+                //不打印错误日志
+                return ;
+            };
+        }
+
         if (env.acceptsProfiles(Profiles.of(JHipsterConstants.SPRING_PROFILE_DEVELOPMENT))) {
             logger(joinPoint)
                 .error(

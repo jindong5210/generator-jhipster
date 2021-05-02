@@ -31,52 +31,7 @@
 # http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
 # ===================================================================
 
-logging:
-    level:
-        ROOT: DEBUG
-        io.github.jhipster: DEBUG
-        <%_ if (packageName !== 'io.github.jhipster') { _%>
-        <%= packageName %>: DEBUG
-        <%_ } _%>
-        <%_ if (databaseType === 'neo4j') { _%>
-        org.neo4j.driver: WARN
-        <%_ } _%>
-<%_ if (serviceDiscoveryType === 'eureka') { _%>
 
-eureka:
-    instance:
-        prefer-ip-address: true
-    client:
-        <%_ if (applicationType === 'monolith') { _%>
-        enabled: false # By default, the JHipster Registry is not used in the "dev" profile
-        <%_ } _%>
-        service-url:
-            defaultZone: http://admin:${jhipster.registry.password}@localhost:8761/eureka/
-<%_ } _%>
-
-<%_ if (searchEngine === 'elasticsearch') { _%>
-management:
-    health:
-        elasticsearch:
-            enabled: false
-
-<%_ } _%>
-<%_ if (databaseType === 'neo4j') { _%>
-org:
-    neo4j:
-        driver:
-            pool:
-                metrics-enabled: true
-            uri: bolt://localhost:7687
-            # Uncomment to use an authenticated connection
-            # authentication:
-            #     username: neo4j
-            #     password: secret
-        migrations:
-            locations-to-scan:
-            packages-to-scan: <%= packageName %>.config.neo4j
-            installed-by: <%= baseName %>
-<%_ } _%>
 spring:
     profiles:
         active: dev
@@ -101,49 +56,6 @@ spring:
             host: localhost
             port: 8500
     <%_ } _%>
-    <%_ if (databaseType === 'sql' && !reactive) { _%>
-    datasource:
-        type: com.zaxxer.hikari.HikariDataSource
-        <%_ if (devDatabaseType === 'mysql') { _%>
-        url: <%- getJDBCUrl(devDatabaseType, { databaseName: baseName, hostname: 'localhost' }) %>
-        username: root
-        password:
-        <%_ } else if (devDatabaseType === 'mariadb') { _%>
-        url: <%- getJDBCUrl(devDatabaseType, { databaseName: baseName, hostname: 'localhost' }) %>
-        username: root
-        password:
-        <%_ } else if (devDatabaseType === 'postgresql') { _%>
-        url: <%- getJDBCUrl(devDatabaseType, { databaseName: baseName, hostname: 'localhost' }) %>
-        username: <%= baseName %>
-        password:
-        <%_ } else if (devDatabaseType === 'oracle') { _%>
-        url: <%- getJDBCUrl(devDatabaseType, { databaseName: 'xe', hostname: 'localhost' }) %>
-        username: system
-        password: oracle
-        <%_ } else if (devDatabaseType === 'mssql') { _%>
-        url: <%- getJDBCUrl(devDatabaseType, { databaseName: baseName, hostname: 'localhost' }) %>
-        username: SA
-        password: yourStrong(!)Password
-        <%_ } else if (devDatabaseType === 'h2Disk') { _%>
-        url: <%- getJDBCUrl(devDatabaseType, { databaseName: lowercaseBaseName, localDirectory: `./${BUILD_DIR}h2db/db` }) %>
-        username: <%= baseName %>
-        password:
-        <%_ } else if (devDatabaseType === 'h2Memory') { _%>
-        url: <%- getJDBCUrl(devDatabaseType, { databaseName: lowercaseBaseName }) %>
-        username: <%= baseName %>
-        password:
-        <%_ } _%>
-        hikari:
-            poolName: Hikari
-            auto-commit: false
-        <%_ if (devDatabaseType === 'mysql' || devDatabaseType === 'mariadb' || devDatabaseType === 'mssql') { _%>
-            data-source-properties:
-                cachePrepStmts: true
-                prepStmtCacheSize: 250
-                prepStmtCacheSqlLimit: 2048
-                useServerPrepStmts: true
-        <%_ } _%>
-    <%_ } _%>
     <%_ if (devDatabaseType === 'h2Disk' || devDatabaseType === 'h2Memory') { _%>
     h2:
         console:
@@ -156,7 +68,6 @@ spring:
         <%_ } else if (devDatabaseType === 'h2Disk' || devDatabaseType === 'h2Memory') { _%>
         database-platform: io.github.jhipster.domain.util.FixedH2Dialect
         <%_ } _%>
-        show-sql: true
     <%_ } _%>
     <%_ if (databaseType === 'mongodb' || databaseType === 'cassandra' || searchEngine === 'elasticsearch') { _%>
     data:
@@ -172,12 +83,6 @@ spring:
             protocolVersion: V4
             compression: LZ4
             keyspaceName: <%= baseName %>
-    <%_ } _%>
-    <%_ if (searchEngine === 'elasticsearch') { _%>
-        elasticsearch:
-            properties:
-                path:
-                    home: <%= BUILD_DIR %>elasticsearch
     <%_ } _%>
     <%_ if (databaseType === 'couchbase') { _%>
     couchbase:
@@ -322,14 +227,6 @@ jhipster:
             # Disabled by default in dev mode as Memcached does not work with Spring Boot Devtools
             # If you want to use Memcached, you must also enable it in CacheConfiguration
             enabled: false
-        <%_ } _%>
-        <%_ if (cacheProvider === 'redis') { _%>
-        redis: # Redis configuration
-            expiration: 3600 # By default objects stay 1 hour (in seconds) in the cache
-            server: redis://localhost:6379
-            cluster: false
-            # server: redis://localhost:6379,redis://localhost:16379,redis://localhost:26379
-            # cluster: true
         <%_ } _%>
     <%_ } _%>
     <%_ if (applicationType !== 'microservice') { _%>

@@ -392,6 +392,12 @@ To achieve this, first build a docker image of your app by running:
 <% if (buildTool === 'maven') { %>./mvnw -Pprod verify jib:dockerBuild<% } %><% if (buildTool === 'gradle') { %>./gradlew bootJar -Pprod jibDockerBuild<% } %>
 ```
 
+For skip tests:
+
+```
+./mvnw -Pprod verify jib:dockerBuild -Dmaven.test.skip=true
+```
+
 Then run:
 
 ```

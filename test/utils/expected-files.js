@@ -199,6 +199,7 @@ const expectedFiles = {
         `${SERVER_MAIN_SRC_DIR}com/mycompany/myapp/service/package-info.java`,
         `${SERVER_MAIN_SRC_DIR}com/mycompany/myapp/web/rest/errors/package-info.java`,
         `${SERVER_MAIN_SRC_DIR}com/mycompany/myapp/web/rest/errors/BadRequestAlertException.java`,
+        `${SERVER_MAIN_SRC_DIR}com/mycompany/myapp/web/rest/errors/BusinessException.java`,
         `${SERVER_MAIN_SRC_DIR}com/mycompany/myapp/web/rest/errors/ErrorConstants.java`,
         `${SERVER_MAIN_SRC_DIR}com/mycompany/myapp/web/rest/errors/ExceptionTranslator.java`,
         `${SERVER_MAIN_SRC_DIR}com/mycompany/myapp/web/rest/errors/FieldErrorVM.java`,

@@ -55,6 +55,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.annotation.PostConstruct;
+
 @Configuration
 @EnableConfigurationProperties(ElasticsearchProperties.class)
 public class ElasticsearchConfiguration {
@@ -63,6 +65,11 @@ public class ElasticsearchConfiguration {
 
     public ElasticsearchConfiguration(ObjectMapper mapper) {
         this.mapper = mapper;
+    }
+
+    @PostConstruct
+    public void init() {
+        System.setProperty("es.set.netty.runtime.available.processors", "false");
     }
 
     @Bean

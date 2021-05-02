@@ -648,6 +648,10 @@
                     <groupId>commons-logging</groupId>
                     <artifactId>commons-logging</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.elasticsearch</groupId>
+                    <artifactId>jna</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <%_ } _%>
@@ -910,8 +914,8 @@
         </dependency>
 <%_ } _%>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-cloud-connectors</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.security</groupId>
